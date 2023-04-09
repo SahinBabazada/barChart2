@@ -1,18 +1,18 @@
 {
     "dataRoles": [
         {
-            "displayName": "Category Data",
-            "name": "category",
+            "displayName": "Bar Grouping",
+            "name": "myCategory",
             "kind": "Grouping"
         },
         {
-            "displayName": "Measure Data",
-            "name": "measure",
+            "displayName": "Actual",
+            "name": "actual",
             "kind": "Measure"
         },
         {
-            "displayName": "Tooltips",
-            "name": "Tooltips",
+            "displayName": "Budget",
+            "name": "budget",
             "kind": "Measure"
         }
     ],
@@ -20,10 +20,13 @@
         {
             "conditions": [
                 {
-                    "category": {
+                    "myCategory": {
                         "max": 1
                     },
-                    "measure": {
+                    "actual": {
+                        "max": 1
+                    },
+                    "budget": {
                         "max": 1
                     }
                 }
@@ -31,14 +34,22 @@
             "categorical": {
                 "categories": {
                     "for": {
-                        "in": "category"
+                        "in": "myCategory"
+                    },
+                    "dataReductionAlgorithm": {
+                        "top": {}
                     }
                 },
                 "values": {
                     "select": [
                         {
                             "bind": {
-                                "to": "measure"
+                                "to": "actual"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "budget"
                             }
                         }
                     ]
@@ -47,17 +58,17 @@
         }
     ],
     "objects": {
-        "enableAxis": {
-            "displayName": "Enable Axis",
+        "barchartProperties": {
+            "displayName": "Barchart Properties",
             "properties": {
-                "show": {
-                    "displayName": "Enable Axis",
+                "sortBySize": {
+                    "displayName": "Sort by Size",
                     "type": {
                         "bool": true
                     }
                 },
-                "fill": {
-                    "displayName": "Color",
+                "positiveBarColor": {
+                    "displayName": "Positive Bar Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -65,14 +76,9 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "colorSelector": {
-            "displayName": "Data Colors",
-            "properties": {
-                "fill": {
-                    "displayName": "Color",
+                },
+                "negativeBarColor": {
+                    "displayName": "Negative Bar Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -80,73 +86,20 @@
                             }
                         }
                     }
-                }
-            }
-        },
-        "generalView": {
-            "displayName": "General View",
-            "properties": {
-                "opacity": {
-                    "displayName": "Bars Opacity",
+                },
+                "xAxisFontSize": {
+                    "displayName": "X Axis Font Size",
                     "type": {
                         "integer": true
                     }
                 },
-                "showHelpLink": {
-                    "displayName": "Show Help Button",
+                "yAxisFontSize": {
+                    "displayName": "Y Axis Font Size",
                     "type": {
-                        "bool": true
-                    }
-                }
-            }
-        },
-        "averageLine": {
-            "displayName": "Average Line",
-            "objectCategory": 2,
-            "properties": {
-                "show": {
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "displayName": {
-                    "type": {
-                        "text": true
-                    }
-                },
-                "fill": {
-                    "displayName": "Color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "showDataLabel": {
-                    "displayName": "Data label",
-                    "type": {
-                        "bool": true
+                        "integer": true
                     }
                 }
             }
         }
-    },
-    "tooltips": {
-        "supportedTypes": {
-            "default": true,
-            "canvas": true
-        },
-        "roles": [
-            "Tooltips"
-        ],
-        "supportEnhancedTooltips": true
-    },
-    "supportsLandingPage": false,
-    "drilldown": {
-        "roles": [
-            "category"
-        ]
     }
 }
