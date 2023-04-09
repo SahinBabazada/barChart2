@@ -21,14 +21,11 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import Fill = powerbi.Fill;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
-import ISelectionId = powerbi.visuals.ISelectionId;
 
 import { valueFormatter as vf, textMeasurementService as tms } from "powerbi-visuals-utils-formattingutils";
-import {createTooltipServiceWrapper, ITooltipServiceWrapper} from "powerbi-visuals-utils-tooltiputils";
-
 import IValueFormatter = vf.IValueFormatter;
 
-import { VisualSettings, BarchartProperties } from "./settings";
+import { VisualSettings,BarchartProperties } from "./settings";
 
 import * as d3 from "d3";
 type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
@@ -38,7 +35,6 @@ export interface BarchartDataPoint{
     category: string;
     actual: number;
     budget: number;
-    selectionId: ISelectionId;
 }
 
 export interface BarchartViewModel{
@@ -70,15 +66,12 @@ export class BarChart implements IVisual {
     private xAxisContainer2: Selection<SVGGElement>;
     private yAxisContainer2: Selection<SVGGElement>;
 
-    private selectionManager: ISelectionManager;
-    private tooltipServiceWrapper?: ITooltipServiceWrapper;
 
     private hostService: IVisualHost;
 
     private settings: VisualSettings;
 
     private viewModel: BarchartViewModel;
-    private BarchartDataPoint: BarchartDataPoint[];
 
     private static margin = {
         top:20,
@@ -87,23 +80,11 @@ export class BarChart implements IVisual {
         left: 50,
     };
 
-    static Config = {
-        xScalePadding: 0.1,
-        solidOpacity: 1,
-        transparentOpacity: 0.4,
-        xAxisFontMultiplier: 0.04,
-    };
+
 
 
     constructor(options: VisualConstructorOptions) {
         this.hostService = options.host;
-        this.selectionManager = this.hostService.createSelectionManager();
-        
-        this.selectionManager.registerOnSelectCallback(() => {
-            this.syncSelectionState(this.barSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
-        });
-        
-        this.tooltipServiceWrapper = createTooltipServiceWrapper(this.hostService.tooltipService, options.element);
 
         this.svg = d3.select(options.element)
             .append('svg')
@@ -264,13 +245,13 @@ export class BarChart implements IVisual {
             .merge(<any>this.barSelection)
             .classed('bar',true);
 
-
         const barSelectionMerged2 = this.barSelection2
             .enter()
             .append('rect')
             .merge(<any>this.barSelection2)
             .classed('bar', true);
 
+    
         barSelectionMerged2
             .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
             .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.budget)): yScale(Number(dataPoint.actual)))
@@ -278,7 +259,7 @@ export class BarChart implements IVisual {
             .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.budget)): yScale(Number(dataPoint.actual)))))
             .style("fill", (dataPoint: BarchartDataPoint) => viewModel.defaultBarColor)
             .style("fill-opacity", (dataPoint: BarchartDataPoint) => 1);
-        
+
 
         barSelectionMerged
             .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
@@ -287,44 +268,10 @@ export class BarChart implements IVisual {
             .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))))
             .style("fill",(dataPoint:BarchartDataPoint) => dataPoint.actual > dataPoint.budget? viewModel.negativeBarColor: viewModel.positiveBarColor);
 
+        // this.barSelection
+        //     .exit()
+        //     .remove();
 
-        this.tooltipServiceWrapper.addTooltip(barSelectionMerged,
-            (dataPoint: BarchartDataPoint) => this.getTooltipDataActual(dataPoint),
-            (dataPoint: BarchartDataPoint) => dataPoint.selectionId
-        );
-
-        this.tooltipServiceWrapper.addTooltip(barSelectionMerged2,
-            (dataPoint: BarchartDataPoint) => this.getTooltipDataBudget(dataPoint),
-            (dataPoint: BarchartDataPoint) => dataPoint.selectionId
-        );
-
-        this.syncSelectionState(
-            barSelectionMerged,
-            <ISelectionId[]>this.selectionManager.getSelectionIds()
-        );
-        // this.syncSelectionState(
-        //     barSelectionMerged2,
-        //     <ISelectionId[]>this.selectionManager.getSelectionIds()
-        // );
-
-        this.barSelection
-            .exit()
-            .remove();
-
-    }
-
-    private getTooltipDataBudget(value: any): VisualTooltipDataItem[] {
-        return [{
-            displayName: value.category,
-            value: value.budget.toString()
-        }];
-    }
-
-    private getTooltipDataActual(value: any): VisualTooltipDataItem[] {
-        return [{
-            displayName: value.category,
-            value: value.actual.toString()
-        }];
     }
 
     public createViewModel(dataView: DataView): BarchartViewModel{
@@ -346,39 +293,18 @@ export class BarChart implements IVisual {
 
         var BarchartDataPoints: BarchartDataPoint[] = [];
 
-
-        let category = dataView.categorical.categories[0];
-        let dataValue = dataView.categorical.values[0];
         /** Iterate over the category values and push into the view model data points.
          *  The index is the same across categories and measures.
          *      actual = values[0]
          *      budget = values[1]
          */
-
-
-            // categoryNames.map((c, ci) => { /** c= category, ci = category array index */
-            //     BarchartDataPoints.push({
-            //         category: <string>c,
-            //         actual: <number>categoricalDataView.values[0].values[ci],
-            //         budget: <number>categoricalDataView.values[1].values[ci]
-            //     });
-            // });
-
-        for (let i = 0, len = Math.max(category.values.length, dataValue.values.length); i < len; i++) {
-    
-            const selectionId: ISelectionId = this.hostService.createSelectionIdBuilder()
-                .withCategory(category, i)
-                .createSelectionId();
-    
-            BarchartDataPoints.push({
-                category: <string>category.values[i],
-                actual: <number>categoricalDataView.values[0].values[i],
-                budget: <number>categoricalDataView.values[1].values[i],
-                selectionId,
+            categoryNames.map((c, ci) => { /** c= category, ci = category array index */
+                BarchartDataPoints.push({
+                    category: <string>c,
+                    actual: <number>categoricalDataView.values[0].values[ci],
+                    budget: <number>categoricalDataView.values[1].values[ci]
+                });
             });
-        }
-
-
 
         //get formatting code for the field that is the measure
         var format: string = categoricalDataView.values[0].source.format
@@ -418,43 +344,6 @@ export class BarChart implements IVisual {
             MeasureName:dataView.metadata.columns[0].displayName
         };
 
-    }
-    private syncSelectionState(selection, selectionIds): void {
-        if (!selection || !selectionIds) {
-            return;
-        }
-
-        if (!selectionIds.length) {
-            const opacity: number = this.settings.barchartProperties.opacity / 100;
-            selection
-                .style("fill-opacity", opacity)
-                .style("stroke-opacity", opacity);
-            return;
-        }
-
-        const self: this = this;
-
-        selection.each(function (barDataPoint) {
-            const isSelected: boolean = self.isSelectionIdInArray(selectionIds, barDataPoint.selectionId);
-
-            const opacity: number = isSelected
-                ? BarChart.Config.solidOpacity
-                : BarChart.Config.transparentOpacity;
-
-            d3.select(this)
-                .style("fill-opacity", opacity)
-                .style("stroke-opacity", opacity);
-        });
-    }
-
-    private isSelectionIdInArray(selectionIds: ISelectionId[], selectionId: ISelectionId): boolean {
-        if (!selectionIds || !selectionId) {
-            return false;
-        }
-
-        return selectionIds.some((currentSelectionId: ISelectionId) => {
-            return currentSelectionId.includes(selectionId);
-        });
     }
 
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration {

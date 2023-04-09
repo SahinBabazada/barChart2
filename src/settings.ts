@@ -14,6 +14,9 @@ export class BarchartProperties {
   sortBySize: boolean = true;
   xAxisFontSize: number = 10;
   yAxisFontSize: number = 10;
+  yAxisEnable: boolean = true;
   positiveBarColor: Fill = { "solid": { "color": "#40916C" } }; // default color is  teal;
-  negativeBarColor: Fill = { "solid": { "color": "#EF233C" } }; // default color is  teal;
+  negativeBarColor: Fill = { "solid": { "color": "#EF233C" } }; // default color is  green;
+  defaultBarColor: Fill = { "solid": { "color": "#83C5BE" } }; // default color is  teal;
+  opacity: number = 100;
 }

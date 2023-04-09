@@ -67,8 +67,24 @@
                         "bool": true
                     }
                 },
+                "yAxisEnable": {
+                    "displayName": "Switch Y axis",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "defaultBarColor": {
+                    "displayName": "Budget Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
                 "positiveBarColor": {
-                    "displayName": "Positive Bar Color",
+                    "displayName": "Actual < Budget Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -78,7 +94,7 @@
                     }
                 },
                 "negativeBarColor": {
-                    "displayName": "Negative Bar Color",
+                    "displayName": "Actual > Budget Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -101,5 +117,6 @@
                 }
             }
         }
-    }
+    },
+    "supportsHighlight": true
 }
