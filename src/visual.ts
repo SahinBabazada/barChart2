@@ -59,16 +59,15 @@ export interface BarchartViewModel{
 export class BarChart implements IVisual {
     private svg: Selection<any>;
     private barContainer: Selection<SVGGElement>;
-    private plotBackground: Selection<SVGRectElement>;
-    private barSelection: DataSelection<BarchartDataPoint>;
+
+    private actualBarSelection: DataSelection<BarchartDataPoint>;
+    private varianceBarSelection: DataSelection<BarchartDataPoint>;
+
+    private actualDataLabel: DataSelection<BarchartDataPoint>;
+    private varianceDataLabel: DataSelection<BarchartDataPoint>;
+
     private xAxisContainer: Selection<SVGGElement>;
     private yAxisContainer: Selection<SVGGElement>;
-
-    private barContainer2: Selection<SVGGElement>;
-    private plotBackground2: Selection<SVGRectElement>;
-    private barSelection2: DataSelection<BarchartDataPoint>;
-    private xAxisContainer2: Selection<SVGGElement>;
-    private yAxisContainer2: Selection<SVGGElement>;
 
     private selectionManager: ISelectionManager;
     private tooltipServiceWrapper?: ITooltipServiceWrapper;
@@ -100,7 +99,7 @@ export class BarChart implements IVisual {
         this.selectionManager = this.hostService.createSelectionManager();
         
         this.selectionManager.registerOnSelectCallback(() => {
-            this.syncSelectionState(this.barSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
+            this.syncSelectionState(this.actualBarSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
         });
         
         this.tooltipServiceWrapper = createTooltipServiceWrapper(this.hostService.tooltipService, options.element);
@@ -112,35 +111,14 @@ export class BarChart implements IVisual {
         this.barContainer = this.svg
             .append('g')
             .classed('barContainer', true);
-        
-        this.plotBackground = this.barContainer
-            .append('rect')
-            .classed('plotBackground', true);
             
         this.xAxisContainer = this.svg
             .append('g')
             .classed('xAxis', true);
-
+        
         this.yAxisContainer = this.svg
             .append('g')
             .classed('yAxis', true);
-
-        this.barContainer2 = this.svg
-            .append('g')
-            .classed('barContainer2', true);
-
-        this.plotBackground2 = this.barContainer2
-            .append('rect')
-            .classed('plotBackground2', true);
-
-        this.xAxisContainer2 = this.svg
-            .append('g')
-            .classed('xAxis2', true);
-
-        this.yAxisContainer2 = this.svg
-            .append('g')
-            .classed('yAxis2', true);
-
 
         this.settings = VisualSettings.getDefault() as VisualSettings;
 
@@ -160,7 +138,7 @@ export class BarChart implements IVisual {
         let marginLeftValue = (viewModel.yAxisEnable == true)? BarChart.margin.left: BarChart.margin.left - 30;
         let marginLeft = marginLeftValue * (viewModel.YAxisFontSize / 10);
         let marginBottom = BarChart.margin.bottom * (viewModel.XAxisFontSize / 10);
-        let marginTop = BarChart.margin.top;
+        let marginTop = BarChart.margin.top + 40;
         let marginRight = BarChart.margin.right;
 
         let plotArea = {
@@ -170,32 +148,11 @@ export class BarChart implements IVisual {
             height: (options.viewport.height - (marginTop + marginBottom)),
         };
 
-        let plotArea2 = {
-            x: plotArea.x + plotArea.width + 0.3,
-            y: marginTop,
-        };
 
         this.barContainer
             .attr("transform","translate(" + plotArea.x + "," + plotArea.y + ")")
             .attr("width",options.viewport.width)
             .attr("height", options.viewport.height);
-        
-        
-        this.plotBackground
-            .attr("width", plotArea.width)
-            .attr("height", plotArea.height)
-            .style("fill","none");
-
-        this.barContainer2
-            .attr("transform", "translate(" + plotArea.x + "," + plotArea.y + ")")
-            .attr("width", options.viewport.width)
-            .attr("height", options.viewport.height);
-
-        this.plotBackground2
-            .attr("width", plotArea.width)
-            .attr("height", plotArea.height)
-            .style("fill", "none");
-
 
         var xScale = d3.scaleBand()
             .rangeRound([0, plotArea.width])
@@ -207,15 +164,7 @@ export class BarChart implements IVisual {
             .attr("transform","translate(" + plotArea.x + "," + (plotArea.height + plotArea.y)+")")
             .call(d3.axisBottom(xScale).tickSizeOuter(0));
 
-        this.xAxisContainer2
-            .attr("class", "xAxis2")
-            .attr("transform", "translate(" + plotArea.x + "," + (plotArea.height + plotArea.y) + ")")
-            .call(d3.axisBottom(xScale).tickSizeOuter(0));
-
-
         d3.select(".xAxis").selectAll("text").style("font-size",viewModel.XAxisFontSize);
-
-        d3.select(".xAxis2").selectAll("text").style("font-size", viewModel.XAxisFontSize);
 
         let maxValueY: number = d3.max(
             viewModel.DataPoints,
@@ -247,31 +196,69 @@ export class BarChart implements IVisual {
 
         d3.select(".yAxis").selectAll("text").style("font-size",viewModel.YAxisFontSize);
 
-        this.barSelection2 = this.barContainer2
-            .selectAll('.bar')
+        this.actualBarSelection = this.barContainer
+            .selectAll('.actualBar')
             .data(viewModel.DataPoints);
 
-
-        this.barSelection = this.barContainer
-            .selectAll('.bar')
+        this.varianceBarSelection = this.barContainer
+            .selectAll('.varianceBar')
             .data(viewModel.DataPoints);
-
-    
         
-        const barSelectionMerged = this.barSelection
+
+
+
+        this.actualDataLabel = this.barContainer
+            .selectAll('.actual-bar-label')
+            .data(viewModel.DataPoints);
+        
+        this.varianceDataLabel = this.barContainer
+            .selectAll('.variance-bar-label')
+            .data(viewModel.DataPoints);
+
+        this.varianceBarSelection
             .enter()
             .append('rect')
-            .merge(<any>this.barSelection)
-            .classed('bar',true);
+            .merge(<any>this.varianceBarSelection)
+            .classed('varianceBar',true)
+            .attr("id", (dataPoint: BarchartDataPoint, i) => "vbar" + i)
+            .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
+            .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))
+            .attr("width", xScale.bandwidth())
+            .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))))
+            .style("fill",(dataPoint:BarchartDataPoint) => dataPoint.actual > dataPoint.budget? viewModel.negativeBarColor: viewModel.positiveBarColor);
+        
 
-
-        const barSelectionMerged2 = this.barSelection2
+        const actualBarMerged = this.actualBarSelection
             .enter()
             .append('rect')
-            .merge(<any>this.barSelection2)
-            .classed('bar', true);
-
-        barSelectionMerged2
+            .merge(<any>this.actualBarSelection)
+            .classed('actualBar',true)
+            .attr("id", (dataPoint: BarchartDataPoint, i) => "bar" + i);
+        
+         
+        this.actualDataLabel
+            .enter()
+            .append('text')
+            .merge(<any>this.actualDataLabel)
+            .classed('actual-bar-label', true)
+            .attr('x', (dataPoint: BarchartDataPoint) => xScale(dataPoint.category) + xScale.bandwidth()/2)
+            .attr('dx', 0)
+            .attr('y', (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)) - 20: yScale(Number(dataPoint.budget)) - 20)
+            .attr('dy', -6)
+            .text((dataPoint: BarchartDataPoint) => dataPoint.actual); 
+        
+        this.varianceDataLabel
+            .enter()
+            .append('text')
+            .merge(<any>this.varianceDataLabel)
+            .classed('variance-bar-label', true)
+            .attr('x', (dataPoint: BarchartDataPoint) => xScale(dataPoint.category) + xScale.bandwidth()/2)
+            .attr('dx', 0)
+            .attr('y', (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)) - 5: yScale(Number(dataPoint.budget)) - 5)
+            .attr('dy', -6)
+            .text((dataPoint: BarchartDataPoint) => `${((dataPoint.actual - dataPoint.budget)/dataPoint.budget * 100).toFixed(1)}%`); 
+   
+        actualBarMerged
             .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
             .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.budget)): yScale(Number(dataPoint.actual)))
             .attr("width", xScale.bandwidth())
@@ -280,26 +267,26 @@ export class BarChart implements IVisual {
             .style("fill-opacity", (dataPoint: BarchartDataPoint) => 1);
         
 
-        barSelectionMerged
-            .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
-            .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))
-            .attr("width", xScale.bandwidth())
-            .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))))
-            .style("fill",(dataPoint:BarchartDataPoint) => dataPoint.actual > dataPoint.budget? viewModel.negativeBarColor: viewModel.positiveBarColor);
+        // barSelectionMerged2
+        //     .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
+        //     .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))
+        //     .attr("width", xScale.bandwidth())
+        //     .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))))
+        //     .style("fill",(dataPoint:BarchartDataPoint) => dataPoint.actual > dataPoint.budget? viewModel.negativeBarColor: viewModel.positiveBarColor);
+        
 
-
-        this.tooltipServiceWrapper.addTooltip(barSelectionMerged,
+        this.tooltipServiceWrapper.addTooltip(actualBarMerged,
             (dataPoint: BarchartDataPoint) => this.getTooltipDataActual(dataPoint),
             (dataPoint: BarchartDataPoint) => dataPoint.selectionId
         );
+        // this.tooltipServiceWrapper.addTooltip(barSelectionMerged2,
+        //     (dataPoint: BarchartDataPoint) => this.getTooltipDataBudget(dataPoint),
+        //     (dataPoint: BarchartDataPoint) => dataPoint.selectionId
+        // );
 
-        this.tooltipServiceWrapper.addTooltip(barSelectionMerged2,
-            (dataPoint: BarchartDataPoint) => this.getTooltipDataBudget(dataPoint),
-            (dataPoint: BarchartDataPoint) => dataPoint.selectionId
-        );
 
         this.syncSelectionState(
-            barSelectionMerged,
+            actualBarMerged,
             <ISelectionId[]>this.selectionManager.getSelectionIds()
         );
         // this.syncSelectionState(
@@ -307,10 +294,20 @@ export class BarChart implements IVisual {
         //     <ISelectionId[]>this.selectionManager.getSelectionIds()
         // );
 
-        this.barSelection
+        
+        this.actualDataLabel
+            .exit()
+            .remove();  
+        this.varianceDataLabel
+            .exit()
+            .remove();  
+        this.actualBarSelection
+            .exit()
+            .remove();    
+        this.varianceBarSelection
             .exit()
             .remove();
-
+         
     }
 
     private getTooltipDataBudget(value: any): VisualTooltipDataItem[] {
