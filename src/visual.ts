@@ -60,6 +60,8 @@ export class BarChart implements IVisual {
     private svg: Selection<any>;
     private barContainer: Selection<SVGGElement>;
 
+
+
     private actualBarSelection: DataSelection<BarchartDataPoint>;
     private varianceBarSelection: DataSelection<BarchartDataPoint>;
 
@@ -68,6 +70,7 @@ export class BarChart implements IVisual {
 
     private xAxisContainer: Selection<SVGGElement>;
     private yAxisContainer: Selection<SVGGElement>;
+    private connections: Selection<SVGGElement>;
 
     private selectionManager: ISelectionManager;
     private tooltipServiceWrapper?: ITooltipServiceWrapper;
@@ -78,6 +81,9 @@ export class BarChart implements IVisual {
 
     private viewModel: BarchartViewModel;
     private BarchartDataPoint: BarchartDataPoint[];
+
+    private clickedBars: number[] = [];
+
 
     private static margin = {
         top:20,
@@ -97,7 +103,8 @@ export class BarChart implements IVisual {
     constructor(options: VisualConstructorOptions) {
         this.hostService = options.host;
         this.selectionManager = this.hostService.createSelectionManager();
-        
+        options.element.style.overflowX = 'auto';
+
         this.selectionManager.registerOnSelectCallback(() => {
             this.syncSelectionState(this.actualBarSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
         });
@@ -115,6 +122,8 @@ export class BarChart implements IVisual {
         this.xAxisContainer = this.svg
             .append('g')
             .classed('xAxis', true);
+
+        this.connections = this.barContainer.append('g').classed('connection', true);
         
         this.yAxisContainer = this.svg
             .append('g')
@@ -133,25 +142,40 @@ export class BarChart implements IVisual {
 
         //set height and width of root SVG element using viewport passed by Power BI host
         this.svg.attr("height",options.viewport.height);
-        this.svg.attr("width", options.viewport.width);
+        // this.svg.attr("width", options.viewport.width);
 
+
+        
         let marginLeftValue = (viewModel.yAxisEnable == true)? BarChart.margin.left: BarChart.margin.left - 30;
         let marginLeft = marginLeftValue * (viewModel.YAxisFontSize / 10);
         let marginBottom = BarChart.margin.bottom * (viewModel.XAxisFontSize / 10);
         let marginTop = BarChart.margin.top + 40;
         let marginRight = BarChart.margin.right;
+        let categoryCount = viewModel.DataPoints.length;
 
+        this.svg.attr("width", categoryCount*60);
+
+        // if (options.viewport.width  < 200){
+        //     d3.select("#sandbox-host").style("overflow-x", "auto");
+        //     marginBottom = marginBottom + 20;
+        // }else{
+        //     d3.select("#sandbox-host").style("overflow-x", null);
+        // }
+
+        let op_vw_width = options.viewport.width;
         let plotArea = {
             x: marginLeft,
             y:marginTop,
-            width: (options.viewport.width - (marginLeft + BarChart.margin.right)),
-            height: (options.viewport.height - (marginTop + marginBottom)),
+            // width: ((op_vw_width > 400? op_vw_width: 400) - (marginLeft + marginRight)),
+            width: ( categoryCount*60 - (marginLeft + marginRight)),
+            height: (options.viewport.height - (marginTop + marginBottom + 5)),
         };
+
 
 
         this.barContainer
             .attr("transform","translate(" + plotArea.x + "," + plotArea.y + ")")
-            .attr("width",options.viewport.width)
+            .attr("width", options.viewport.width + 200)
             .attr("height", options.viewport.height);
 
         var xScale = d3.scaleBand()
@@ -196,6 +220,7 @@ export class BarChart implements IVisual {
 
         d3.select(".yAxis").selectAll("text").style("font-size",viewModel.YAxisFontSize);
 
+
         this.actualBarSelection = this.barContainer
             .selectAll('.actualBar')
             .data(viewModel.DataPoints);
@@ -205,8 +230,6 @@ export class BarChart implements IVisual {
             .data(viewModel.DataPoints);
         
 
-
-
         this.actualDataLabel = this.barContainer
             .selectAll('.actual-bar-label')
             .data(viewModel.DataPoints);
@@ -214,20 +237,16 @@ export class BarChart implements IVisual {
         this.varianceDataLabel = this.barContainer
             .selectAll('.variance-bar-label')
             .data(viewModel.DataPoints);
+            
+        this.connections = this.barContainer.selectAll('connection');
 
-        this.varianceBarSelection
+        const varianceBarMerged = this.varianceBarSelection
             .enter()
             .append('rect')
             .merge(<any>this.varianceBarSelection)
             .classed('varianceBar',true)
             .attr("id", (dataPoint: BarchartDataPoint, i) => "vbar" + i)
-            .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
-            .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))
-            .attr("width", xScale.bandwidth())
-            .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))))
-            .style("fill",(dataPoint:BarchartDataPoint) => dataPoint.actual > dataPoint.budget? viewModel.negativeBarColor: viewModel.positiveBarColor);
         
-
         const actualBarMerged = this.actualBarSelection
             .enter()
             .append('rect')
@@ -235,6 +254,7 @@ export class BarChart implements IVisual {
             .classed('actualBar',true)
             .attr("id", (dataPoint: BarchartDataPoint, i) => "bar" + i);
         
+
          
         this.actualDataLabel
             .enter()
@@ -258,6 +278,7 @@ export class BarChart implements IVisual {
             .attr('dy', -6)
             .text((dataPoint: BarchartDataPoint) => `${((dataPoint.actual - dataPoint.budget)/dataPoint.budget * 100).toFixed(1)}%`); 
    
+
         actualBarMerged
             .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
             .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.budget)): yScale(Number(dataPoint.actual)))
@@ -266,23 +287,52 @@ export class BarChart implements IVisual {
             .style("fill", (dataPoint: BarchartDataPoint) => viewModel.defaultBarColor)
             .style("fill-opacity", (dataPoint: BarchartDataPoint) => 1);
         
+        varianceBarMerged
+            .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
+            .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))
+            .attr("width", xScale.bandwidth())
+            .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))))
+            .style("fill",(dataPoint:BarchartDataPoint) => dataPoint.actual > dataPoint.budget? viewModel.negativeBarColor: viewModel.positiveBarColor);
 
-        // barSelectionMerged2
-        //     .attr("x", (dataPoint: BarchartDataPoint) => xScale(dataPoint.category))
-        //     .attr("y", (dataPoint: BarchartDataPoint) => dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))
-        //     .attr("width", xScale.bandwidth())
-        //     .attr("height", (dataPoint: BarchartDataPoint) => (plotArea.height - (dataPoint.actual > dataPoint.budget? yScale(Number(dataPoint.actual)): yScale(Number(dataPoint.budget)))))
-        //     .style("fill",(dataPoint:BarchartDataPoint) => dataPoint.actual > dataPoint.budget? viewModel.negativeBarColor: viewModel.positiveBarColor);
-        
+
+
+
+
+        // create connections
+
+      // Set up the click and double-click handlers
+        actualBarMerged.on('click', (d, i, n) => {
+            this.handleBarClick(d, i, n)
+        });
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         this.tooltipServiceWrapper.addTooltip(actualBarMerged,
-            (dataPoint: BarchartDataPoint) => this.getTooltipDataActual(dataPoint),
+            (dataPoint: BarchartDataPoint) => this.getTooltipData(dataPoint),
             (dataPoint: BarchartDataPoint) => dataPoint.selectionId
         );
-        // this.tooltipServiceWrapper.addTooltip(barSelectionMerged2,
-        //     (dataPoint: BarchartDataPoint) => this.getTooltipDataBudget(dataPoint),
-        //     (dataPoint: BarchartDataPoint) => dataPoint.selectionId
-        // );
+        this.tooltipServiceWrapper.addTooltip(varianceBarMerged,
+            (dataPoint: BarchartDataPoint) => this.getTooltipData(dataPoint),
+            (dataPoint: BarchartDataPoint) => dataPoint.selectionId
+        );
 
 
         this.syncSelectionState(
@@ -310,18 +360,75 @@ export class BarChart implements IVisual {
          
     }
 
-    private getTooltipDataBudget(value: any): VisualTooltipDataItem[] {
+    // private getTooltipDataBudget(value: any): VisualTooltipDataItem[] {
+    //     console.log(value);
+    //     return [{
+    //         displayName: value.category,
+    //         value: value.budget.toString()
+    //     }];
+    // }
+
+    private getTooltipData(value: any): VisualTooltipDataItem[] {
         return [{
-            displayName: value.category,
+            displayName: `actual:`,
+            value: value.actual.toString()
+        },{
+            displayName: `budget:`,
             value: value.budget.toString()
         }];
     }
 
-    private getTooltipDataActual(value: any): VisualTooltipDataItem[] {
-        return [{
-            displayName: value.category,
-            value: value.actual.toString()
-        }];
+    private handleBarClick(d, i: number, n) {
+        const clickedBar = n[i];
+        if (this.clickedBars.length === 0) {
+            this.clickedBars.push(i);
+        } else {
+
+            const firstBar = this.clickedBars[0];
+
+            const x1 = Number(d3.select(clickedBar).attr('x'));
+            const x2 = Number(d3.select(n[firstBar]).attr('x'));
+
+            const y1 = Number(d3.select(clickedBar).attr('y'));
+            const y2 = Number(d3.select(n[firstBar]).attr('y')) + Number(d3.select(n[firstBar]).attr('height'));
+
+            const w1 = Number(d3.select(clickedBar).attr('width'));
+            const w2 = Number(d3.select(n[firstBar]).attr('width'));
+
+            let firstValue = d3.select(n[firstBar])['_groups'][0][0]['__data__']['actual'];
+            let secondValue = d3.select(clickedBar)['_groups'][0][0]['__data__']['actual'];
+
+            let minY = Math.min(y1, y2);
+
+
+
+            this.connections.append('path')
+                .attr('d', `M ${x2 + w2/2}, ${y2 - 40} V ${minY - 40} H ${x1 + w1/2} V ${y1 - 20}`)
+                .attr('stroke', 'black')
+                .attr('fill', 'none');
+            
+            this.connections.append('rect')
+                .attr('x', (x1 + x2)/2)
+                .attr('y', minY - 50)
+                .attr('width', 50)
+                .attr('height', 20)
+                .attr('rx', 10)
+                .style('stroke', 'gray')
+                .style('fill', 'white');
+
+            let text_content =   `${secondValue > firstValue ? '+' : ''}${Math.round((secondValue / firstValue * 100) - 100)}%`
+
+            this.connections.append('text')
+                .text(text_content)
+                .attr('class', 'mark_class')
+                .attr('x',  (x1 + x2)/2 + 15)
+                .attr('y', minY - 37)
+                .attr('text-anchor', 'middle')
+                .style('fill', 'black')
+
+
+            this.clickedBars = [];
+        }
     }
 
     public createViewModel(dataView: DataView): BarchartViewModel{
