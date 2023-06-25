@@ -8,6 +8,7 @@ import Fill = powerbi.Fill;
 export class VisualSettings extends DataViewObjectsParser {
   // public dataPoint: dataPointSettings = new dataPointSettings();
   public barchartProperties: BarchartProperties = new BarchartProperties();
+  public dataLabel: DataLabel = new DataLabel();
 }
 
 export class BarchartProperties {
@@ -19,4 +20,11 @@ export class BarchartProperties {
   negativeBarColor: Fill = { "solid": { "color": "#EF233C" } }; // default color is  green;
   defaultBarColor: Fill = { "solid": { "color": "#83C5BE" } }; // default color is  teal;
   opacity: number = 100;
+}
+
+export class DataLabel {
+  displayUnit: number = 0;
+  fontSize: number = 16;
+  decimal: number = 1;
+  color: Fill = { "solid": { "color": "#000000" } }; // default color is black;
 }

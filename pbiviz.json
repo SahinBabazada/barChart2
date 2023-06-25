@@ -1,18 +1,18 @@
 {
   "visual": {
-    "name": "Bar Chart",
-    "displayName": "barChart",
+    "name": "Advanced Bar Chart",
+    "displayName": "Advanced Bar Chart",
     "guid": "PBI_CV_9894B302_1DFF_4A96_ABFE_BF8588197166",
     "visualClassName": "BarChart",
     "version": "3.2.0",
-    "description": "Sample bar chart",
-    "supportUrl": "pbicvsupport@microsoft.com",
-    "gitHubUrl": ""
+    "description": "Advanced bar chart",
+    "supportUrl": "https://community.powerbi.com",
+    "gitHubUrl": "https://github.com/SahinBabazada"
   },
   "apiVersion": "3.8.0",
   "author": {
-    "name": "Author name",
-    "email": "author@mail.com"
+    "name": "Shahin Babazada",
+    "email": "babazadasahin@gmail.com"
   },
   "assets": {
     "icon": "assets/icon.png"

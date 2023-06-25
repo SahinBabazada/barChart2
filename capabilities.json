@@ -116,6 +116,42 @@
                     }
                 }
             }
+        },
+        "dataLabel": {
+            "displayName": "Data Labels",
+            "properties": {
+                "displayUnit": {
+                    "displayName": "Display Units",
+                    "type": {
+                        "formatting": {
+                            "labelDisplayUnits": true
+                        }
+                    },
+                    "suppressFormatPainterCopy": true
+                },
+                "decimal": {
+                    "displayName": "Decimals",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "fontSize": {
+                    "displayName": "Text size",
+                    "type": {
+                        "numeric": true
+                    }
+                },
+                "color": {
+                    "displayName": "Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "supportsHighlight": true

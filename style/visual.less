@@ -10,14 +10,14 @@
 //     min-width: 400px !important;
 // }
 
+
 .actual-bar-label {
     fill: #000;
     text-anchor: middle;
-    font-size: 16px;
     font-family: Arial, Helvetica, sans-serif;
 }
 
-.variance-bar-label {
+.variance-bar-label, .divergence {
     fill: #000;
     text-anchor: middle;
     font-size: 12px;
@@ -27,6 +27,7 @@
 .varianceBar:hover {
     opacity: 0.6;
 }
+
 .actualBar:hover {
     opacity: 0.6;
 }
@@ -37,9 +38,22 @@
     height: 5px;
     width: 5px;
 }
+
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
     background-color: black;
+}
+
+
+line {
+    stroke: gray;
+}
+
+line#limit {
+    stroke: #FED966;
+    stroke-width: 3;
+    stroke-dasharray: 3 6;
 }
